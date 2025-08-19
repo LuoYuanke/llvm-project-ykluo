@@ -885,11 +885,11 @@ bool CheckStore(InterpState &S, CodePtr OpPC, const Pointer &Ptr) {
   if (!Ptr.block()->isAccessible()) {
     if (!CheckLive(S, OpPC, Ptr, AK_Assign))
       return false;
+    if (!CheckExtern(S, OpPC, Ptr))
+      return false;
     return CheckDummy(S, OpPC, Ptr.block(), AK_Assign);
   }
   if (!CheckLifetime(S, OpPC, Ptr.getLifetime(), AK_Assign))
-    return false;
-  if (!CheckExtern(S, OpPC, Ptr))
     return false;
   if (!CheckRange(S, OpPC, Ptr, AK_Assign))
     return false;
@@ -1852,6 +1852,11 @@ bool EndLifetime(InterpState &S, CodePtr OpPC) {
   const auto &Ptr = S.Stk.peek<Pointer>();
   if (Ptr.isBlockPointer() && !CheckDummy(S, OpPC, Ptr.block(), AK_Destroy))
     return false;
+
+  // FIXME: We need per-element lifetime information for primitive arrays.
+  if (Ptr.isArrayElement())
+    return true;
+
   endLifetimeRecurse(Ptr.narrow());
   return true;
 }
@@ -1861,6 +1866,11 @@ bool EndLifetimePop(InterpState &S, CodePtr OpPC) {
   const auto &Ptr = S.Stk.pop<Pointer>();
   if (Ptr.isBlockPointer() && !CheckDummy(S, OpPC, Ptr.block(), AK_Destroy))
     return false;
+
+  // FIXME: We need per-element lifetime information for primitive arrays.
+  if (Ptr.isArrayElement())
+    return true;
+
   endLifetimeRecurse(Ptr.narrow());
   return true;
 }
